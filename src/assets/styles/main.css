@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+/* Global resets that aren't worth a utility class */
+html,
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* Status overlay (VICTORY / DEFEAT). Tailwind is used for layout,
+   but the keyframe + the show/hide transition is custom. */
+.status-overlay {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.status-overlay.is-visible {
+  opacity: 1;
+}
+
+.wave-notice-overlay {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+.wave-notice-overlay.is-visible {
+  opacity: 1;
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.animated-border-fire {
+  --border-angle: 0deg;
+
+  background: conic-gradient(
+    from var(--border-angle),
+    #ff0000,
+    #ff4d00,
+    #ffb700,
+    #fff200,
+    #ff4d00,
+    #ff0000
+  );
+
+  animation: border-spin 2.2s linear infinite;
+}
+
+@keyframes border-spin {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+/* ----- HUD buttons ----- */
+
+.hud-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.55rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 120ms ease, box-shadow 200ms ease, filter 120ms ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+.hud-icon-btn:hover {
+  filter: brightness(1.18);
+  transform: translateY(-1px);
+}
+.hud-icon-btn:active {
+  transform: translateY(1px);
+}
+
+.hud-icon-btn--neutral {
+  background: linear-gradient(180deg, #4a4a4a, #1d1d1d);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+.hud-icon-btn--danger {
+  background: linear-gradient(180deg, #e53030, #7a0e0e);
+  border-color: rgba(255, 100, 100, 0.45);
+  box-shadow: 0 3px 12px rgba(225, 33, 33, 0.4);
+}
+
+.hud-action-btn {
+  padding: 0.85rem 1.45rem;
+  border-radius: 0.85rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 120ms ease, box-shadow 200ms ease, filter 120ms ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+.hud-action-btn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+}
+.hud-action-btn:active {
+  transform: translateY(1px);
+}
+.hud-action-btn.is-disabled,
+.hud-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  animation: none;
+}
+.hud-action-btn.is-disabled:hover,
+.hud-action-btn:disabled:hover {
+  transform: none;
+  filter: grayscale(0.45);
+}
+
+.hud-action-btn--buy {
+  background: linear-gradient(180deg, #2eb63a, #136d20);
+  border-color: rgba(140, 255, 160, 0.4);
+  box-shadow: 0 5px 18px rgba(46, 182, 58, 0.4);
+}
+
+.hud-action-btn--upgrade {
+  background: linear-gradient(180deg, #ffd400, #d18a00);
+  border-color: rgba(255, 232, 128, 0.65);
+  box-shadow: 0 5px 18px rgba(255, 212, 0, 0.45);
+  color: #2a1500;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.hud-action-btn--upgrade.is-active {
+  background: linear-gradient(180deg, #ff9b1a, #c46b00);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes hud-pulse {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-3px) scale(1.04); }
+}
+@keyframes hud-glow {
+  0%, 100% { box-shadow: 0 5px 18px rgba(255, 212, 0, 0.45); }
+  50%      { box-shadow: 0 8px 26px rgba(255, 212, 0, 0.85); }
+}
+.hud-action-btn--pulse {
+  animation: hud-pulse 1.6s ease-in-out infinite, hud-glow 1.6s ease-in-out infinite;
+}
+.hud-action-btn--pulse:hover,
+.hud-action-btn--pulse.is-active {
+  animation-play-state: paused;
+}
+
+/* ----- Upgrade panel ----- */
+
+.upgrade-panel {
+  transform: translateY(14px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 220ms ease;
+}
+.upgrade-panel.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.upgrade-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 108px;
+  padding: 0.7rem 1rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #2a1f1b, #120c08);
+  border: 2px solid rgba(255, 212, 0, 0.4);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  transition: transform 120ms ease, box-shadow 200ms ease, filter 120ms ease,
+              border-color 200ms ease;
+}
+.upgrade-card:hover {
+  filter: brightness(1.18);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(255, 212, 0, 0.45);
+  border-color: rgba(255, 232, 128, 0.85);
+}
+.upgrade-card:active {
+  transform: translateY(1px);
+}
+.upgrade-card.is-disabled,
+.upgrade-card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+}
+.upgrade-card.is-disabled:hover,
+.upgrade-card:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 212, 0, 0.4);
+}
+.upgrade-card__title {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffd400;
+}
+.upgrade-card__lvl {
+  font-size: 0.95rem;
+}
+.upgrade-card__cost {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
