@@ -10,6 +10,10 @@ game runs without external assets. Real GLTF models plug in via a single
 
 ---
 
+## Deploy
+
+https://linwis-merge-playable-ad.vercel.app/
+
 ## Stack
 
 - **Three.js** — 3D rendering
