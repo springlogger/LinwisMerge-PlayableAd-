@@ -100,6 +100,7 @@ export class Game {
     this.hero = new Hero(this.meshFactory);
     this.sceneSetup.scene.add(this.hero.group);
     this.reset();
+    this.sceneSetup.render();
   }
 
   start(): void {

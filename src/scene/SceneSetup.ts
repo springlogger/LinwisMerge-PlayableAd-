@@ -4,6 +4,8 @@ import { CAMERA_FOV, CAMERA_POS } from '../config';
 const ARENA_FIT_RADIUS = 7.2;
 const MAX_CAMERA_SCALE = 2.2;
 const BASE_CAMERA_DISTANCE = Math.hypot(...CAMERA_POS);
+const MIN_VIEWPORT_WIDTH = 1;
+const MIN_VIEWPORT_HEIGHT = 1;
 
 export class SceneSetup {
   readonly renderer: THREE.WebGLRenderer;
@@ -24,7 +26,7 @@ export class SceneSetup {
 
     this.camera = new THREE.PerspectiveCamera(
       CAMERA_FOV,
-      window.innerWidth / window.innerHeight,
+      this.viewportWidth / this.viewportHeight,
       0.1,
       100,
     );
@@ -34,6 +36,7 @@ export class SceneSetup {
     this.applyViewport();
 
     window.addEventListener('resize', this.onResize);
+    window.visualViewport?.addEventListener('resize', this.onResize);
   }
 
   render(): void {
@@ -42,6 +45,7 @@ export class SceneSetup {
 
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
+    window.visualViewport?.removeEventListener('resize', this.onResize);
     this.renderer.dispose();
   }
 
@@ -86,8 +90,8 @@ export class SceneSetup {
   };
 
   private applyViewport(): void {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const w = this.viewportWidth;
+    const h = this.viewportHeight;
     const aspect = w / h;
 
     this.camera.aspect = aspect;
@@ -111,5 +115,13 @@ export class SceneSetup {
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(w, h);
+  }
+
+  private get viewportWidth(): number {
+    return Math.max(MIN_VIEWPORT_WIDTH, this.renderer.domElement.parentElement?.clientWidth ?? window.innerWidth);
+  }
+
+  private get viewportHeight(): number {
+    return Math.max(MIN_VIEWPORT_HEIGHT, this.renderer.domElement.parentElement?.clientHeight ?? window.innerHeight);
   }
 }
