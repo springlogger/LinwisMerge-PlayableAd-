@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { CAMERA_FOV, CAMERA_POS } from '../config';
 
+const ARENA_FIT_RADIUS = 7.2;
+const MAX_CAMERA_SCALE = 2.2;
+const BASE_CAMERA_DISTANCE = Math.hypot(...CAMERA_POS);
+
 export class SceneSetup {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene: THREE.Scene;
@@ -9,7 +13,6 @@ export class SceneSetup {
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -25,11 +28,10 @@ export class SceneSetup {
       0.1,
       100,
     );
-    this.camera.position.set(...CAMERA_POS);
-    this.camera.lookAt(0, 0, 0);
 
     this.addLights();
     this.buildArena();
+    this.applyViewport();
 
     window.addEventListener('resize', this.onResize);
   }
@@ -80,8 +82,34 @@ export class SceneSetup {
   }
 
   private onResize = (): void => {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.applyViewport();
   };
+
+  private applyViewport(): void {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const aspect = w / h;
+
+    this.camera.aspect = aspect;
+
+    const vFov = THREE.MathUtils.degToRad(this.camera.fov);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const limitingFov = Math.min(vFov, hFov);
+    const requiredDistance = ARENA_FIT_RADIUS / Math.tan(limitingFov / 2);
+    const scale = THREE.MathUtils.clamp(
+      requiredDistance / BASE_CAMERA_DISTANCE,
+      1,
+      MAX_CAMERA_SCALE,
+    );
+
+    this.camera.position.set(
+      CAMERA_POS[0] * scale,
+      CAMERA_POS[1] * scale,
+      CAMERA_POS[2] * scale,
+    );
+    this.camera.lookAt(0, 0, 0);
+    this.camera.updateProjectionMatrix();
+
+    this.renderer.setSize(w, h);
+  }
 }

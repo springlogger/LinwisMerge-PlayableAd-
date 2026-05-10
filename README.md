@@ -130,6 +130,30 @@ All button styles live in `src/assets/styles/main.css` under the
 
 ---
 
+## Mobile / responsive
+
+Targeted at modern phones in portrait (iPhone 13 Pro Max and similar).
+The build uses `viewport-fit=cover` and the HUD honours the iOS safe-area
+insets via `env(safe-area-inset-*)`, so the top stats clear the Dynamic
+Island and the bottom button row stays above the home-indicator strip.
+
+- **Camera** — `SceneSetup` rescales camera distance per frame so the
+  arena (~7-unit radius) fits regardless of aspect ratio, capped at
+  2.2× the landscape baseline. Without this, portrait phones would
+  crop half the play field.
+- **Bottom column** — merge hint, upgrade panel and action buttons sit
+  in one flex stack. The upgrade panel collapses its `max-height` when
+  closed, so the hint never overlaps it.
+- **Touch** — every interactive element sets `touch-action: manipulation`
+  and a transparent tap-highlight to kill iOS's 300 ms delay and the
+  gray flash. A `@media (hover: none)` block neutralizes `:hover`
+  transforms so tapped buttons don't stay "raised".
+- **Compact styles** — `@media (max-width: 480px)` shrinks stat pills,
+  action buttons and upgrade cards so all three upgrade cards fit
+  comfortably above the Buy / Upgrade row at 430 logical px.
+
+---
+
 ## Tuning
 
 All gameplay constants live in `src/config.ts`:

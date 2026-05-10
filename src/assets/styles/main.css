@@ -60,6 +60,46 @@ canvas {
   }
 }
 
+/* ----- HUD anchors (safe-area aware) ----- */
+
+.hud-anchor {
+  position: absolute;
+}
+.hud-anchor--top-left {
+  top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
+  left: calc(env(safe-area-inset-left, 0px) + 0.6rem);
+}
+.hud-anchor--top-right {
+  top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.6rem);
+}
+.hud-anchor--bottom {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.6rem);
+  left: 50%;
+  transform: translateX(-50%);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  max-width: 100vw;
+}
+
+.hud-stat-pill {
+  display: inline-block;
+  background: rgba(18, 12, 8, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(255, 77, 0, 0.25);
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.hud-merge-hint {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: center;
+  pointer-events: none;
+  max-width: 92vw;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
 /* ----- HUD buttons ----- */
 
 .hud-icon-btn {
@@ -77,6 +117,8 @@ canvas {
   border: 2px solid transparent;
   transition: transform 120ms ease, box-shadow 200ms ease, filter 120ms ease;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .hud-icon-btn:hover {
   filter: brightness(1.18);
@@ -108,6 +150,8 @@ canvas {
   border: 2px solid transparent;
   transition: transform 120ms ease, box-shadow 200ms ease, filter 120ms ease;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .hud-action-btn:hover {
   filter: brightness(1.12);
@@ -170,12 +214,17 @@ canvas {
   transform: translateY(14px);
   opacity: 0;
   pointer-events: none;
-  transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 220ms ease;
+  max-height: 0;
+  overflow: hidden;
+  transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 220ms ease,
+              max-height 240ms ease;
 }
 .upgrade-panel.is-open {
   transform: translateY(0);
   opacity: 1;
   pointer-events: auto;
+  max-height: 220px;
 }
 
 .upgrade-card {
@@ -194,6 +243,8 @@ canvas {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   transition: transform 120ms ease, box-shadow 200ms ease, filter 120ms ease,
               border-color 200ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .upgrade-card:hover {
   filter: brightness(1.18);
@@ -228,4 +279,52 @@ canvas {
 .upgrade-card__cost {
   font-size: 0.8rem;
   opacity: 0.85;
+}
+
+/* ----- Narrow viewports (phones in portrait) ----- */
+
+@media (max-width: 480px) {
+  .hud-anchor--top-left { font-size: 0.72rem; line-height: 1.25; }
+  .hud-stat-pill {
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.25rem;
+    border-radius: 0.35rem;
+  }
+
+  .hud-icon-btn {
+    padding: 0.38rem 0.65rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+
+  .hud-action-btn {
+    padding: 0.7rem 1.05rem;
+    font-size: 0.85rem;
+    border-radius: 0.7rem;
+  }
+
+  .upgrade-card {
+    min-width: 92px;
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.65rem;
+  }
+  .upgrade-card__title { font-size: 0.62rem; letter-spacing: 0.1em; }
+  .upgrade-card__lvl { font-size: 0.85rem; }
+  .upgrade-card__cost { font-size: 0.72rem; }
+
+  .hud-merge-hint { font-size: 0.66rem; }
+
+  .upgrade-panel.is-open { max-height: 180px; }
+}
+
+/* Sticky :hover after tap on touch devices is annoying — neutralize the
+   transform/filter shifts so a tapped button doesn't stay "lifted". */
+@media (hover: none) {
+  .hud-action-btn:hover,
+  .hud-icon-btn:hover,
+  .upgrade-card:hover {
+    transform: none;
+    filter: none;
+  }
+  .hud-action-btn--pulse:hover { animation-play-state: running; }
 }

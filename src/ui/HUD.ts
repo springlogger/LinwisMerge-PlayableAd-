@@ -175,36 +175,32 @@ export class HUD {
 
   private template(): string {
     return `
-<div class="absolute top-3.5 left-3.5 text-sm leading-relaxed pointer-events-none [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
-  <div class="inline-block bg-[#120c08]/70 ring-1 ring-[#ff4d00]/25 rounded-md px-2.5 py-1.5 mb-1.5">
+<div class="hud-anchor hud-anchor--top-left text-sm leading-relaxed pointer-events-none [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+  <div class="hud-stat-pill">
     <span class="opacity-70">Kills:</span>
     <span class="font-bold text-[#ffd400]" id="hud-kills">0</span>
   </div>
-  <br/>
-  <div class="inline-block bg-[#120c08]/70 ring-1 ring-[#ff4d00]/25 rounded-md px-2.5 py-1.5 mb-1.5">
+  <div class="hud-stat-pill">
     <span class="opacity-70">HP:</span>
     <span class="font-bold text-[#ff6b3d]" id="hud-health">10/10</span>
   </div>
-  <br/>
-  <div class="inline-block bg-[#120c08]/70 ring-1 ring-[#ff4d00]/25 rounded-md px-2.5 py-1.5 mb-1.5">
+  <div class="hud-stat-pill">
     <span class="opacity-70">Wave:</span>
     <span class="font-bold text-[#ffd400]" id="hud-wave">1</span>
     <span class="opacity-70">/ ${TOTAL_WAVES}</span>
   </div>
-  <br/>
-  <div class="inline-block bg-[#120c08]/70 ring-1 ring-[#ff4d00]/25 rounded-md px-2.5 py-1.5 mb-1.5">
+  <div class="hud-stat-pill">
     <span class="opacity-70">Cash:</span>
     <span class="font-bold text-[#ffd400]" id="hud-money">$0</span>
   </div>
-  <br/>
-  <div class="inline-block bg-[#120c08]/70 ring-1 ring-[#ff4d00]/25 rounded-md px-2.5 py-1.5">
+  <div class="hud-stat-pill">
     <span class="opacity-70">Guns:</span>
     <span class="font-bold text-[#ffd400]" id="hud-guns">0</span>
     <span class="opacity-70">/ ${GUN_SLOT_COUNT}</span>
   </div>
 </div>
 
-<div class="absolute top-3.5 right-3.5 flex gap-2">
+<div class="hud-anchor hud-anchor--top-right flex gap-2">
   <button id="hud-pause" class="hud-icon-btn hud-icon-btn--neutral" aria-label="Pause">Pause</button>
   <button id="hud-reset" class="hud-icon-btn hud-icon-btn--danger" aria-label="Reset">Reset</button>
 </div>
@@ -223,11 +219,10 @@ export class HUD {
          [text-shadow:0_4px_14px_rgba(0,0,0,0.8)]"
 ></div>
 
-<div class="absolute bottom-32 left-1/2 -translate-x-1/2 text-xs text-white/75 pointer-events-none text-center max-w-[90vw]">
-  Drag a sphere onto another sphere of the same tier to merge it into the next color.
-</div>
-
-<div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
+<div class="hud-anchor hud-anchor--bottom flex flex-col items-center gap-3">
+  <div class="hud-merge-hint">
+    Drag a sphere onto another sphere of the same tier to merge it.
+  </div>
   <div id="hud-upgrade-panel" class="upgrade-panel flex gap-2">
     <button id="upg-damage" class="upgrade-card">
       <div class="upgrade-card__title">Damage</div>
