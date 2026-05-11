@@ -1,196 +1,66 @@
-# Merge Guns — Playable Ad Prototype
+# LinwisMerge — 3D Playable Ad Prototype
 
-3D merge-tower-defense playable ad built on Three.js. Drag same-tier guns
-together to merge them up the rainbow ladder; survive enemy waves until
-the kill goal.
+A high-performance 3D merge-tower-defense playable ad built entirely on **Three.js** and **TypeScript**. 
+Players drag same-tier guns together to merge them into stronger weapons, upgrading their base stats to survive 5 enemy waves (including a final boss). 
 
-This repo is the placeholder build — visuals are colored primitives so the
-game runs without external assets. Real GLTF models plug in via a single
-`MeshFactory` swap point.
+Designed specifically for the Playable Ads market: it builds into a **single HTML file** (via `vite-plugin-singlefile`) with inlined assets, strictly optimized for size and mobile performance.
 
 ---
 
-## Deploy
-
-https://linwis-merge-playable-ad.vercel.app/
-
-## Stack
-
-- **Three.js** — 3D rendering
-- **TypeScript** — strict mode
-- **Vite** — dev server + production build
-- **Tailwind v4** — HUD styles via utility classes
-- **vite-plugin-singlefile** — bundles everything into one HTML for ad networks
+## 🚀 Live Demo
+[https://linwis-merge-playable-ad.vercel.app/](https://linwis-merge-playable-ad.vercel.app/)
 
 ---
 
-## Setup
+## 🛠 Tech Stack & Features
+
+- **Engine:** Three.js (pure WebGL rendering, no heavy game engines)
+- **Language:** TypeScript (strict mode for solid architecture)
+- **Bundler:** Vite + `vite-plugin-singlefile` (outputs a single `index.html` ready for ad networks like AppLovin, Unity Ads, Mintegral, IronSource)
+- **Styling:** Tailwind CSS v4 (compact utility classes for HUD)
+- **Audio:** Custom `AudioSystem` utilizing Web Audio API `GainNode` to bypass iOS Safari hardware-only volume restrictions, ensuring smooth programmatic volume control on all mobile devices.
+
+---
+
+## 🏗 Architecture Overview
+
+The codebase is strictly separated by responsibilities to keep it scalable and maintainable:
+
+- **`main.ts` & `Game.ts`** — The orchestrators. Manage the game loop, win/lose states, and coordinate systems. Includes a pre-loading state that ensures all 3D assets are fully loaded before revealing the Play button.
+- **`config.ts`** — The single source of truth for all game balancing (tier stats, spawn rates, upgrade costs, wave durations).
+- **`scene/SceneSetup.ts`** — Handles the Three.js renderer, camera, lights, and environment (graveyard). Dynamically scales camera distance based on viewport aspect ratio to prevent cropping on ultra-wide or portrait phones.
+- **`factories/MeshFactory.ts`** — The central asset loader and mesh generator. Easily swap primitive placeholders with real `.fbx`/`.glb` models (with Draco compression) without touching game logic.
+- **`entities/`** — `Gun`, `Enemy`, `Hero`, `Bullet`. State holders that wrap Three.js meshes.
+- **`systems/`** — 
+  - `GridSystem`: Handles the 3x3 grid, drag-and-drop raycasting, and merge logic.
+  - `SpawnSystem`: Orchestrates 5 waves of enemies, calculating procedural spawn angles and boss logic.
+  - `CombatSystem`: Auto-aiming, bullet trajectory calculation, collision detection, and global upgrade state application.
+  - `EffectsSystem`: Particle systems (hit sparks, death bursts) and coin drop/collection animations.
+  - `AudioSystem`: Sound pooling, volume sliders, and `AudioContext` graphs.
+- **`ui/`** — `HUD` and `Menu` classes. Pure DOM UI overlayed on top of the WebGL canvas.
+
+---
+
+## 📱 Mobile Adaptation
+
+Specifically engineered for modern smartphones (iPhone & Android):
+- **Dynamic Camera:** `viewport-fit=cover` with aspect-ratio-based camera scaling ensures the arena is always perfectly framed in portrait mode.
+- **Safe Areas:** Utilizes `env(safe-area-inset-*)` so the UI naturally avoids the iOS Dynamic Island and home-indicator.
+- **Touch Optimization:** Uses `touch-action: manipulation` to kill the 300ms tap delay. Neutralized hover effects on touch devices to prevent "sticky" buttons.
+- **Responsive UI:** Adaptive HUD layout that scales down gracefully for `≤480px` screens. Volume sliders feature enlarged touch targets (`w-8 h-8` thumbs) for flawless interaction.
+
+---
+
+## ⚙️ Development & Build
 
 ```bash
 npm install
 npm run dev          # http://localhost:5173 with HMR
 ```
 
-## Build
-
+### Build for Ad Networks
 ```bash
 npm run build        # produces dist/index.html (single file, all inlined)
 npm run preview      # preview the production bundle
 ```
-
-The output `dist/index.html` is what you upload to ad networks (Mintegral,
-Vungle, IronSource, AppLovin). Target size is ≤ 5 MB.
-
----
-
-## Project layout
-
-```
-src/
-├── main.ts                  # entry — instantiates Game, starts loop
-├── Game.ts                  # orchestrator: owns systems, win/lose state
-├── config.ts                # all tunables (tier stats, spawn rate, kill goal)
-├── types.ts                 # shared types (Cell, DropResult, GameState)
-│
-├── scene/
-│   └── SceneSetup.ts        # renderer, camera, lights, ground/arena/ring
-│
-├── factories/
-│   └── MeshFactory.ts       # ⚠ THE SWAP POINT — primitives ↔ GLTF models
-│
-├── entities/                # owns mesh + state
-│   ├── Gun.ts
-│   ├── Enemy.ts             # includes billboard HP bar
-│   ├── Bullet.ts
-│   └── Hero.ts
-│
-├── systems/                 # owns lists of entities, has update(dt,t)
-│   ├── GridSystem.ts        # 3x3 grid, drop resolution, merge logic
-│   ├── SpawnSystem.ts       # enemy waves
-│   ├── CombatSystem.ts      # auto-aim, bullets, damage, kills
-│   ├── EffectsSystem.ts     # particles
-│   └── InputSystem.ts       # pointer drag-and-drop
-│
-├── ui/
-│   └── HUD.ts               # DOM HUD (Tailwind utility classes)
-│
-└── styles/
-    └── main.css             # Tailwind import + tiny custom transitions
-```
-
----
-
-## Where to plug real models
-
-Open **`src/factories/MeshFactory.ts`**. Three things to do:
-
-1. Implement `loadModels()` — use `GLTFLoader` (+ `DRACOLoader` for
-   compression). Store loaded models on the factory instance.
-2. In `createGun(tier)`, swap the procedural sphere for
-   `this.gunModels[tier - 1].clone()`.
-3. Same for `createEnemy(tierIdx)` and `createHero()`.
-
-Public method names stay the same, so no other file needs touching.
-
-```ts
-// example
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-
-async loadModels() {
-  const gltf = new GLTFLoader();
-  const draco = new DRACOLoader();
-  draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-  gltf.setDRACOLoader(draco);
-
-  const urls = [
-    '/models/guns/pistol.glb',
-    '/models/guns/smg.glb',
-    // ...
-  ];
-  const loaded = await Promise.all(urls.map((u) => gltf.loadAsync(u)));
-  this.gunModels = loaded.map((g) => g.scene);
-}
-```
-
-For rigged characters use `SkeletonUtils.clone` instead of `.clone()` so
-each instance gets its own bone hierarchy.
-
----
-
-## HUD layout
-
-- **Top-left** — kills, HP, wave, cash, gun count.
-- **Top-right** — Pause and Reset (compact action buttons).
-- **Bottom-center** — primary actions: green **Buy Gun** and yellow
-  **Upgrade**. Tapping Upgrade slides up a panel with three cards
-  (Damage, Speed, HP) showing current level and next cost. Each upgrade
-  applies globally to every gun the player owns.
-
-The Upgrade button has a constant bounce + glow pulse so first-time
-players can't miss it; pulses pause on hover and while the panel is open.
-All button styles live in `src/assets/styles/main.css` under the
-`.hud-action-btn`, `.hud-icon-btn`, and `.upgrade-card` rules.
-
----
-
-## Mobile / responsive
-
-Targeted at modern phones in portrait (iPhone 13 Pro Max and similar).
-The build uses `viewport-fit=cover` and the HUD honours the iOS safe-area
-insets via `env(safe-area-inset-*)`, so the top stats clear the Dynamic
-Island and the bottom button row stays above the home-indicator strip.
-
-- **Camera** — `SceneSetup` rescales camera distance per frame so the
-  arena (~7-unit radius) fits regardless of aspect ratio, capped at
-  2.2× the landscape baseline. Without this, portrait phones would
-  crop half the play field.
-- **Bottom column** — merge hint, upgrade panel and action buttons sit
-  in one flex stack. The upgrade panel collapses its `max-height` when
-  closed, so the hint never overlaps it.
-- **Touch** — every interactive element sets `touch-action: manipulation`
-  and a transparent tap-highlight to kill iOS's 300 ms delay and the
-  gray flash. A `@media (hover: none)` block neutralizes `:hover`
-  transforms so tapped buttons don't stay "raised".
-- **Compact styles** — `@media (max-width: 480px)` shrinks stat pills,
-  action buttons and upgrade cards so all three upgrade cards fit
-  comfortably above the Buy / Upgrade row at 430 logical px.
-
----
-
-## Tuning
-
-All gameplay constants live in `src/config.ts`:
-
-- `KILL_GOAL` — kills to win (5 by default for a ~30 s playable)
-- `ENEMY_SPAWN_INTERVAL` — seconds between spawns
-- `MAX_ENEMIES` — concurrent cap so the field doesn't overflow
-- `TIER_DAMAGE / FIRERATE / RANGE` — per-tier gun balance
-- `WAVE_DURATION` — seconds per wave (drives difficulty bump)
-- `UPGRADE_BASE_COST / UPGRADE_COST_GROWTH` — upgrade pricing curve
-- `UPGRADE_DAMAGE_PER_LEVEL / UPGRADE_SPEED_PER_LEVEL` — global damage / fire-rate
-  multipliers per level (applied to every gun)
-- `UPGRADE_HP_PER_LEVEL` — extra hero HP per level
-
-Tweak, save, the dev server hot-reloads.
-
----
-
-## Build size budget
-
-For ad networks the practical ceiling is ~5 MB total:
-
-```
-three.js + addons   ~700 KB
-7 gun models        ~600 KB   (Draco-compressed)
-5 enemy models      ~1.3 MB   (with simple anims)
-hero model          ~300 KB
-audio (sparse)      ~300 KB
-code + UI           ~80 KB
-─────────────────────────────
-total              ~3.3 MB
-```
-
-Watch the build report — `npm run build` prints sizes. If you exceed 5 MB,
-first compress models harder (`gltf-pipeline -d` with Draco) before cutting
-features.
+The target output size is strictly **≤ 5 MB** for optimal ad network compatibility.
