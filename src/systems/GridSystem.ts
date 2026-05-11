@@ -97,7 +97,7 @@ export class GridSystem {
       for (let gz = 0; gz < GRID_SIZE; gz++) {
         const x = (gx - GRID_CENTER) * CELL_SIZE;
         const z = (gz - GRID_CENTER) * CELL_SIZE;
-        const isBlocked = gx === GRID_CENTER && gz === GRID_CENTER;
+        const isBlocked = false;
 
         if (!isBlocked) {
           const tile = this.meshFactory.createGridTile();

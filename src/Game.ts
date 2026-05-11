@@ -6,6 +6,7 @@ import { GridSystem } from './systems/GridSystem';
 import { SpawnSystem } from './systems/SpawnSystem';
 import { CombatSystem } from './systems/CombatSystem';
 import { EffectsSystem } from './systems/EffectsSystem';
+import { AudioSystem } from './systems/AudioSystem';
 import { InputSystem } from './systems/InputSystem';
 import { HUD } from './ui/HUD';
 import { Menu } from './ui/menu';
@@ -31,12 +32,16 @@ const UPGRADE_KINDS: readonly UpgradeKind[] = ['damage', 'speed', 'hp'];
 
 const STARTING_GUN_COUNT = 2;
 const MAX_FRAME_DT = 0.05;
+const MIN_DROPPED_COINS = 3;
+const MAX_DROPPED_COINS = 10;
+const COIN_COLLECT_Y = 1.05;
 
 export class Game {
   private readonly clock = new THREE.Clock();
 
   private readonly sceneSetup: SceneSetup;
   private readonly meshFactory: MeshFactory;
+  private readonly audio: AudioSystem;
   private readonly effects: EffectsSystem;
   private readonly grid: GridSystem;
   private readonly spawn: SpawnSystem;
@@ -56,8 +61,9 @@ export class Game {
   constructor(container: HTMLElement) {
     this.sceneSetup = new SceneSetup(container);
     this.meshFactory = new MeshFactory();
+    this.audio = new AudioSystem();
 
-    this.effects = new EffectsSystem(this.sceneSetup.scene);
+    this.effects = new EffectsSystem(this.sceneSetup.scene, this.meshFactory);
     this.grid = new GridSystem(this.meshFactory, this.sceneSetup.scene, this.effects);
     this.spawn = new SpawnSystem(this.meshFactory, this.sceneSetup.scene);
     this.combat = new CombatSystem(
@@ -81,6 +87,8 @@ export class Game {
     };
     this.spawn.onEnemyReachedCenter = (enemy) => this.onEnemyReachedCenter(enemy);
     this.combat.onKill = (enemy) => this.onEnemyKilled(enemy);
+    this.combat.onShoot = () => this.audio.playShoot();
+    this.effects.onCoinCollected = () => this.audio.playCoin();
     this.input.isInputBlocked = () => this.state !== 'playing';
 
     this.hud = new HUD(container, {
@@ -92,18 +100,28 @@ export class Game {
 
     this.menu = new Menu(container, {
       onPlay: () => this.start(),
+      onToggleMusic: () => this.audio.toggleMusic(),
+      isMusicEnabled: () => this.audio.isMusicEnabled(),
+      onVolumeChange: (v) => this.audio.setMusicVolume(v),
+      getVolume: () => this.audio.getMusicVolume(),
     });
   }
 
   async init(): Promise<void> {
     await this.meshFactory.loadModels();
+    this.sceneSetup.addGraveyardDecor(this.meshFactory);
     this.hero = new Hero(this.meshFactory);
     this.sceneSetup.scene.add(this.hero.group);
-    this.reset();
+    this.hero.reset();
     this.sceneSetup.render();
+    this.menu.setLoaded();
   }
 
   start(): void {
+    this.reset();
+    this.hud.show();
+    this.audio.startMusic();
+
     const tick = (): void => {
       requestAnimationFrame(tick);
       const dt = Math.min(this.clock.getDelta(), MAX_FRAME_DT);
@@ -178,18 +196,33 @@ export class Game {
 
   private pause(): void {
     this.state = 'paused';
+    this.audio.setMusicMuffled(true);
     this.syncEconomyHud();
     this.menu.showPauseMenu({
       onContinue: () => {
         this.state = 'playing';
+        this.audio.setMusicMuffled(false);
         this.syncEconomyHud();
       },
+      onToggleMusic: () => this.audio.toggleMusic(),
+      isMusicEnabled: () => this.audio.isMusicEnabled(),
+      onVolumeChange: (v) => this.audio.setMusicVolume(v),
+      getVolume: () => this.audio.getMusicVolume(),
     });
   }
 
   private onEnemyKilled(enemy: Enemy): void {
+    const reward = this.killReward(enemy);
+    this.audio.playZombieDeath();
+    this.effects.spawnCoins(
+      enemy.mesh.position.x,
+      enemy.mesh.position.y,
+      enemy.mesh.position.z,
+      this.droppedCoinCount(reward),
+      new THREE.Vector3(this.hero.group.position.x, COIN_COLLECT_Y, this.hero.group.position.z),
+    );
     this.kills++;
-    this.money += this.killReward(enemy);
+    this.money += reward;
     this.hud.setKills(this.kills);
     this.syncEconomyHud();
   }
@@ -234,6 +267,7 @@ export class Game {
     this.upgrades.hp = 0;
     this.heroHp = HERO_MAX_HP;
     this.state = 'playing';
+    this.audio.setMusicMuffled(false);
 
     const max = this.heroMaxHp();
     this.hud.setKills(0);
@@ -277,6 +311,15 @@ export class Game {
     return KILL_REWARD_BASE + waveBonus + tierBonus;
   }
 
+  private droppedCoinCount(reward: number): number {
+    const ratio = THREE.MathUtils.clamp(
+      (reward - KILL_REWARD_BASE) / (BOSS_KILL_REWARD - KILL_REWARD_BASE),
+      0,
+      1,
+    );
+    return Math.round(THREE.MathUtils.lerp(MIN_DROPPED_COINS, MAX_DROPPED_COINS, ratio));
+  }
+
   private enemyDamage(enemy: Enemy): number {
     return TIER_DAMAGE[enemy.tierIdx] ?? TIER_DAMAGE[TIER_DAMAGE.length - 1];
   }
@@ -290,9 +333,12 @@ export class Game {
     this.hud.setBuyCost(cost);
     this.hud.setBuyEnabled(this.state === 'playing' && canAfford && hasFreeSlot);
 
+    let availableUpgradeCount = 0;
     for (const kind of UPGRADE_KINDS) {
       const enabled = this.state === 'playing' && this.money >= this.upgradeCost(kind);
+      if (enabled) availableUpgradeCount++;
       this.hud.setUpgradeEnabled(kind, enabled);
     }
+    this.hud.setUpgradeAvailable(availableUpgradeCount);
   }
 }

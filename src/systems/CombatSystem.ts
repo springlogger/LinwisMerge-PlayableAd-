@@ -22,6 +22,7 @@ const BULLET_HIT_RADIUS = 0.15;
 export class CombatSystem {
   readonly bullets: Bullet[] = [];
   onKill: (enemy: Enemy) => void = () => {};
+  onShoot: () => void = () => {};
 
   private readonly tmpDirection = new THREE.Vector3();
   private readonly tmpAim = new THREE.Vector3();
@@ -81,6 +82,7 @@ export class CombatSystem {
   }
 
   private fire(gun: Gun, target: Enemy): void {
+    this.onShoot();
     const mesh = this.meshFactory.createBullet(gun.tier);
     mesh.position.copy(gun.mesh.position);
     this.scene.add(mesh);

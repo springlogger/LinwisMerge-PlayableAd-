@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { MeshFactory } from '../factories/MeshFactory';
+import { ENEMY_GOAL_X, ENEMY_GOAL_Z } from '../config';
 
 const HP_BAR_WIDTH = 0.72;
 const IDLE_BOB_SPEED = 2.4;
@@ -23,7 +24,7 @@ export class Hero {
     this.baseY = meshFactory.getHeroSize() / 2 + 0.18;
     this.mesh.position.y = this.baseY;
     this.group.add(this.mesh);
-    this.group.position.set(0, 0, 0);
+    this.group.position.set(ENEMY_GOAL_X, 0, ENEMY_GOAL_Z);
 
     const barY = meshFactory.getHeroSize() + 0.35;
     this.hpBarBg = new THREE.Mesh(
@@ -70,7 +71,7 @@ export class Hero {
 
   playHit(): void {
     if (this.isDead) return;
-    const action = this.findAction(['hit', 'hurt', 'damage', 'react']);
+    const action = this.findAction(['hit', 'hurt', 'damage', 'react', 'emote-no']);
     if (!action) return;
 
     action.reset();

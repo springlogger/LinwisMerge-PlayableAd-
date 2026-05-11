@@ -1,13 +1,6 @@
 import * as THREE from 'three';
 import type { MeshFactory } from '../factories/MeshFactory';
 
-const ENEMY_ANIMATION = {
-  walk: 'CharacterArmature|Walk',
-  run: 'CharacterArmature|Run',
-  hit: 'CharacterArmature|HitReact',
-  death: 'CharacterArmature|Death',
-} as const;
-
 const RUN_ANIMATION_SPEED_THRESHOLD = 1.05;
 
 type EnemyOptions = {
@@ -83,8 +76,8 @@ export class Enemy {
     this.playMovement();
   }
 
-  /** Walk toward (0,0). Returns true once the enemy reaches center. */
-  step(dt: number, reachRadius: number): boolean {
+  /** Walk toward the defended goal. Returns true once the enemy reaches it. */
+  step(dt: number, reachRadius: number, targetX = 0, targetZ = 0): boolean {
     this.mixer?.update(dt);
     if (this.isDying) {
       this.deathElapsed += dt;
@@ -92,20 +85,20 @@ export class Enemy {
     }
 
     const position = this.mesh.position;
-    const toCenterX = -position.x;
-    const toCenterZ = -position.z;
+    const toCenterX = targetX - position.x;
+    const toCenterZ = targetZ - position.z;
     const distance = Math.hypot(toCenterX, toCenterZ);
     if (distance <= reachRadius) return true;
 
     position.x += (toCenterX / distance) * this.speed * dt;
     position.z += (toCenterZ / distance) * this.speed * dt;
-    this.mesh.lookAt(0, position.y, 0);
+    this.mesh.lookAt(targetX, position.y, targetZ);
     return false;
   }
 
   playHit(): void {
     if (this.isDying) return;
-    const action = this.actions.get(ENEMY_ANIMATION.hit);
+    const action = this.findAction(['hit', 'hurt', 'damage', 'react', 'emote-no']);
     if (!action) return;
 
     action.reset();
@@ -124,7 +117,7 @@ export class Enemy {
 
     this.movementAction?.fadeOut(0.08);
 
-    const action = this.actions.get(ENEMY_ANIMATION.death);
+    const action = this.findAction(['die', 'death']);
     if (!action) return;
 
     action.reset();
@@ -170,15 +163,23 @@ export class Enemy {
 
   private playMovement(): void {
     const isFast = this.speed > RUN_ANIMATION_SPEED_THRESHOLD;
-    const primary = isFast ? ENEMY_ANIMATION.run : ENEMY_ANIMATION.walk;
-    const fallback = isFast ? ENEMY_ANIMATION.walk : ENEMY_ANIMATION.run;
-
-    const action = this.actions.get(primary) ?? this.actions.get(fallback);
+    const action = isFast
+      ? this.findAction(['run', 'sprint', 'walk'])
+      : this.findAction(['walk', 'run', 'sprint', 'idle']);
     if (!action) return;
 
     action.reset();
     action.setLoop(THREE.LoopRepeat, Infinity);
     action.fadeIn(0.12).play();
     this.movementAction = action;
+  }
+
+  private findAction(keywords: string[]): THREE.AnimationAction | null {
+    for (const keyword of keywords) {
+      for (const [clipName, action] of this.actions) {
+        if (clipName.toLowerCase().includes(keyword)) return action;
+      }
+    }
+    return null;
   }
 }

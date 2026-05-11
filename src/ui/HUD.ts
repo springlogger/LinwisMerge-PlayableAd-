@@ -1,8 +1,5 @@
-import { GUN_SLOT_COUNT, TOTAL_WAVES } from '../config';
+import { GUN_SLOT_COUNT, TOTAL_WAVES, WAVE_NOTICE_CLEAR_MS, WAVE_NOTICE_VISIBLE_MS } from '../config';
 import type { UpgradeKind } from '../types';
-
-const WAVE_NOTICE_VISIBLE_MS = 950;
-const WAVE_NOTICE_CLEAR_MS = 1450;
 
 const UPGRADE_KINDS: readonly UpgradeKind[] = ['damage', 'speed', 'hp'];
 
@@ -24,6 +21,7 @@ export class HUD {
   private readonly waveNoticeEl: HTMLElement;
   private readonly buyBtn: HTMLButtonElement;
   private readonly upgradeBtn: HTMLButtonElement;
+  private readonly upgradeReadyEl: HTMLElement;
   private readonly upgradePanelEl: HTMLElement;
   private readonly upgradeBtns: Record<UpgradeKind, HTMLButtonElement>;
   private readonly upgradeLvlEls: Record<UpgradeKind, HTMLElement>;
@@ -33,9 +31,12 @@ export class HUD {
   private waveNoticeHideTimer: number | null = null;
   private waveNoticeClearTimer: number | null = null;
 
+  private readonly rootEl: HTMLElement;
+
   constructor(container: HTMLElement, handlers: HUDHandlers) {
     container.insertAdjacentHTML('beforeend', this.template());
 
+    this.rootEl      = this.requireElement(container, '#hud-root');
     this.killsEl     = this.requireElement(container, '#hud-kills');
     this.healthEl    = this.requireElement(container, '#hud-health');
     this.waveEl      = this.requireElement(container, '#hud-wave');
@@ -46,6 +47,7 @@ export class HUD {
     this.waveNoticeEl = this.requireElement(container, '#hud-wave-notice');
     this.buyBtn      = this.requireElement<HTMLButtonElement>(container, '#hud-buy');
     this.upgradeBtn  = this.requireElement<HTMLButtonElement>(container, '#hud-upgrade');
+    this.upgradeReadyEl = this.requireElement(container, '#hud-upgrade-ready');
     this.upgradePanelEl = this.requireElement(container, '#hud-upgrade-panel');
 
     this.upgradeBtns = {
@@ -74,6 +76,14 @@ export class HUD {
     }
   }
 
+  show(): void {
+    this.rootEl.classList.remove('hidden');
+  }
+
+  hide(): void {
+    this.rootEl.classList.add('hidden');
+  }
+
   setKills(n: number): void {
     this.killsEl.textContent = String(n);
   }
@@ -91,7 +101,7 @@ export class HUD {
   }
 
   setMoney(n: number): void {
-    this.moneyEl.textContent = `$${n}`;
+    this.moneyEl.textContent = String(n);
   }
 
   setBuyCost(n: number): void {
@@ -101,6 +111,7 @@ export class HUD {
   setBuyEnabled(enabled: boolean): void {
     this.buyBtn.disabled = !enabled;
     this.buyBtn.classList.toggle('is-disabled', !enabled);
+    this.buyBtn.classList.toggle('hud-action-btn--pulse', enabled);
   }
 
   setUpgradeLevel(kind: UpgradeKind, level: number): void {
@@ -114,6 +125,13 @@ export class HUD {
   setUpgradeEnabled(kind: UpgradeKind, enabled: boolean): void {
     this.upgradeBtns[kind].disabled = !enabled;
     this.upgradeBtns[kind].classList.toggle('is-disabled', !enabled);
+  }
+
+  setUpgradeAvailable(count: number): void {
+    const available = count > 0;
+    this.upgradeBtn.classList.toggle('hud-action-btn--pulse', available);
+    this.upgradeReadyEl.classList.toggle('is-visible', available);
+    this.upgradeReadyEl.textContent = String(count);
   }
 
   closeUpgradePanel(): void {
@@ -175,28 +193,32 @@ export class HUD {
 
   private template(): string {
     return `
-<div class="hud-anchor hud-anchor--top-left text-sm leading-relaxed pointer-events-none [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+<div id="hud-root" class="hidden">
+<div class="hud-anchor hud-anchor--top-left hud-stats-panel pointer-events-none">
   <div class="hud-stat-pill">
-    <span class="opacity-70">Kills:</span>
-    <span class="font-bold text-[#ffd400]" id="hud-kills">0</span>
+    <i class="fa-solid fa-skull hud-stat-icon hud-stat-icon--kills" aria-hidden="true"></i>
+    <span class="hud-stat-label">Kills</span>
+    <span class="hud-stat-value" id="hud-kills">0</span>
   </div>
   <div class="hud-stat-pill">
-    <span class="opacity-70">HP:</span>
-    <span class="font-bold text-[#ff6b3d]" id="hud-health">10/10</span>
+    <i class="fa-solid fa-heart-pulse hud-stat-icon hud-stat-icon--health" aria-hidden="true"></i>
+    <span class="hud-stat-label">HP</span>
+    <span class="hud-stat-value hud-stat-value--danger" id="hud-health">10/10</span>
   </div>
   <div class="hud-stat-pill">
-    <span class="opacity-70">Wave:</span>
-    <span class="font-bold text-[#ffd400]" id="hud-wave">1</span>
-    <span class="opacity-70">/ ${TOTAL_WAVES}</span>
+    <i class="fa-solid fa-flag hud-stat-icon hud-stat-icon--wave" aria-hidden="true"></i>
+    <span class="hud-stat-label">Wave</span>
+    <span class="hud-stat-value"><span id="hud-wave">1</span><span class="hud-stat-muted">/${TOTAL_WAVES}</span></span>
   </div>
   <div class="hud-stat-pill">
-    <span class="opacity-70">Cash:</span>
-    <span class="font-bold text-[#ffd400]" id="hud-money">$0</span>
+    <i class="fa-solid fa-dollar-sign hud-stat-icon hud-stat-icon--money" aria-hidden="true"></i>
+    <span class="hud-stat-label">Cash</span>
+    <span class="hud-stat-value" id="hud-money">0</span>
   </div>
   <div class="hud-stat-pill">
-    <span class="opacity-70">Guns:</span>
-    <span class="font-bold text-[#ffd400]" id="hud-guns">0</span>
-    <span class="opacity-70">/ ${GUN_SLOT_COUNT}</span>
+    <i class="fa-solid fa-gun hud-stat-icon hud-stat-icon--guns" aria-hidden="true"></i>
+    <span class="hud-stat-label">Guns</span>
+    <span class="hud-stat-value"><span id="hud-guns">0</span><span class="hud-stat-muted">/${GUN_SLOT_COUNT}</span></span>
   </div>
 </div>
 
@@ -241,14 +263,20 @@ export class HUD {
     </button>
   </div>
 
-  <div class="flex gap-2.5 items-center">
-    <button id="hud-buy" class="hud-action-btn hud-action-btn--buy">
-      Buy Gun <span class="opacity-90">$<span id="hud-buy-cost">0</span></span>
-    </button>
-    <button id="hud-upgrade" class="hud-action-btn hud-action-btn--upgrade hud-action-btn--pulse">
-      Upgrade
-    </button>
+  <div class="hud-action-row">
+    <div class="hud-action-wrap">
+      <button id="hud-upgrade" class="hud-action-btn hud-action-btn--upgrade">
+        <span id="hud-upgrade-ready" class="hud-ready-badge">0</span>
+        Upgrade
+      </button>
+    </div>
+    <div class="hud-action-wrap">
+      <button id="hud-buy" class="hud-action-btn hud-action-btn--buy">
+        Buy Gun <span class="opacity-90">$<span id="hud-buy-cost">0</span></span>
+      </button>
+    </div>
   </div>
+</div>
 </div>
     `.trim();
   }

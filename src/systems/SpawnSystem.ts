@@ -5,13 +5,16 @@ import {
   BOSS_HP,
   BOSS_SPEED,
   ENEMY_REACH_RADIUS,
+  ENEMY_GOAL_X,
+  ENEMY_GOAL_Z,
   ENEMY_SPAWN_INTERVAL,
   ENEMY_SPAWN_RADIUS,
   MAX_ENEMIES,
   TIER_HP,
   TOTAL_WAVES,
   WAVE_ENEMY_GROUPS,
-  WAVE_INTRO_DELAY,
+  WAVE_NOTICE_CLEAR_MS,
+  WAVE_POST_NOTICE_DELAY,
 } from '../config';
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -20,6 +23,8 @@ const ENEMY_SPEED_RANDOM_RANGE = 0.26;
 const ENEMY_SPEED_PER_TIER = 0.04;
 const ENEMY_MIN_SPEED = 0.68;
 const ENEMY_GROUND_OFFSET = 0.18;
+const SPAWN_ARC_CENTER = -Math.PI / 2;
+const SPAWN_ARC_WIDTH = Math.PI * 0.55;
 
 type QueuedEnemy = {
   tier: number;
@@ -37,6 +42,7 @@ export class SpawnSystem {
   private spawnedInWave = 0;
   private waveQueue: QueuedEnemy[] = [];
   private isWaitingForNextWave = false;
+  private waveNoticeRemaining = 0;
   private waveIntroRemaining = 0;
   private pendingWave: number | null = null;
 
@@ -53,7 +59,7 @@ export class SpawnSystem {
 
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
-      if (enemy.step(dt, ENEMY_REACH_RADIUS)) {
+      if (enemy.step(dt, ENEMY_REACH_RADIUS, ENEMY_GOAL_X, ENEMY_GOAL_Z)) {
         this.onEnemyReachedCenter(enemy);
         this.remove(enemy);
         continue;
@@ -65,7 +71,7 @@ export class SpawnSystem {
   }
 
   get allWavesCleared(): boolean {
-    return this.wave >= TOTAL_WAVES && this.waveFullySpawned && this.livingEnemies === 0;
+    return !this.isWaitingForNextWave && this.wave >= TOTAL_WAVES && this.waveFullySpawned && this.livingEnemies === 0;
   }
 
   remove(enemy: Enemy): void {
@@ -82,6 +88,7 @@ export class SpawnSystem {
     this.spawnedInWave = 0;
     this.waveQueue = [];
     this.isWaitingForNextWave = false;
+    this.waveNoticeRemaining = 0;
     this.waveIntroRemaining = 0;
     this.pendingWave = null;
     this.wave = 1;
@@ -99,12 +106,17 @@ export class SpawnSystem {
   private tickWaveIntro(dt: number): void {
     if (!this.isWaitingForNextWave) return;
 
+    if (this.waveNoticeRemaining > 0) {
+      this.waveNoticeRemaining = Math.max(0, this.waveNoticeRemaining - dt);
+      return;
+    }
+
     this.waveIntroRemaining = Math.max(0, this.waveIntroRemaining - dt);
     if (this.waveIntroRemaining > 0) return;
 
     const nextWave = this.pendingWave ?? this.wave + 1;
     this.pendingWave = null;
-    this.startWave(nextWave, true);
+    this.startWave(nextWave);
   }
 
   private maybeSpawnNextEnemy(): void {
@@ -128,19 +140,21 @@ export class SpawnSystem {
 
   private scheduleWave(wave: number): void {
     this.pendingWave = wave;
+    this.wave = wave;
     this.isWaitingForNextWave = true;
-    this.waveIntroRemaining = WAVE_INTRO_DELAY;
+    this.waveNoticeRemaining = WAVE_NOTICE_CLEAR_MS / 1000;
+    this.waveIntroRemaining = WAVE_POST_NOTICE_DELAY;
+    this.onWaveStarted(wave);
   }
 
-  private startWave(wave: number, announce: boolean): void {
+  private startWave(wave: number): void {
     this.wave = wave;
     this.waveQueue = this.buildWaveQueue(wave);
     this.spawnedInWave = 0;
     this.isWaitingForNextWave = false;
+    this.waveNoticeRemaining = 0;
     this.waveIntroRemaining = 0;
     this.lastSpawnTime = this.elapsed - ENEMY_SPAWN_INTERVAL;
-
-    if (announce) this.onWaveStarted(this.wave);
   }
 
   private buildWaveQueue(wave: number): QueuedEnemy[] {
@@ -167,9 +181,9 @@ export class SpawnSystem {
     const angle = this.spreadSpawnAngle();
     const size = this.meshFactory.getEnemySize(tierIdx, isBoss);
     const position = new THREE.Vector3(
-      Math.cos(angle) * ENEMY_SPAWN_RADIUS,
+      ENEMY_GOAL_X + Math.cos(angle) * ENEMY_SPAWN_RADIUS,
       size / 2 + ENEMY_GROUND_OFFSET,
-      Math.sin(angle) * ENEMY_SPAWN_RADIUS,
+      ENEMY_GOAL_Z + Math.sin(angle) * ENEMY_SPAWN_RADIUS,
     );
 
     const enemy = new Enemy(this.meshFactory, tierIdx, hp, speed, position, { isBoss });
@@ -183,6 +197,7 @@ export class SpawnSystem {
   }
 
   private spreadSpawnAngle(): number {
-    return (this.spawnedInWave * GOLDEN_ANGLE + this.wave * 0.7) % (Math.PI * 2);
+    const spread = (this.spawnedInWave * GOLDEN_ANGLE + this.wave * 0.17) % 1;
+    return SPAWN_ARC_CENTER + (spread - 0.5) * SPAWN_ARC_WIDTH;
   }
 }
